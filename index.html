@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LaTeX Accessibility Modifier</title>
+</head>
+<body>
+    <h1>LaTeX PDF Accessibility Modifier</h1>
+    <input type="file" id="fileInput" accept=".tex">
+    <button onclick="processFile()">Upload & Modify</button>
+    <br><br>
+    <a id="downloadLink" style="display:none;">Download Modified File</a>
+
+    <script>
+        function processFile() {
+            const fileInput = document.getElementById('fileInput');
+            if (fileInput.files.length === 0) {
+                alert("Please select a file to upload.");
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                let content = event.target.result;
+
+                // Insert the required code before \documentclass{}
+                const metadata = `% put this before documentclass for accessibility pdf tagging\n` +
+                                 `\\DocumentMetadata\n` +
+                                 `{%uncompress, %only for debugging\n` +
+                                 ` pdfversion=2.0,\n` +
+                                 ` testphase=phase-III  % load and activate tagpdf and uses all the phase-III code\n` +
+                                 `}\n\n`;
+                content = content.replace(/^(\s*\\documentclass\b.*$)/m, metadata + '$1');
+
+                // Insert the necessary code after \documentclass{}
+                const postClassContent = `% this is recommended so that fonts and symbols render correctly, not directly related to accessibility\n` +
+                                         `\\usepackage[T1]{fontenc}\n\n` +
+                                         `% necessary for accessibility\n` +
+                                         `\\tagpdfsetup\n` +
+                                         `{\n    tabsorder=structure,\n}\n\n` +
+                                         `% without this package I got an accessibility score of 98% because the title wasn't tagged\n` +
+                                         `\\usepackage{hyperref}\n` +
+                                         `\\hypersetup{\n` +
+                                         `pdflang={en-US},\n` +
+                                         `pdftitle={Minimal Accessibility Example}, % Note: this is the title the PDF gets tagged with, not the one from \\title\n` +
+                                         `pdfauthor={Dennis Perusse},\n` +
+                                         `pdfsubject={Accessibility},\n` +
+                                         `pdfkeywords={Accessibility, LaTeX}\n` +
+                                         `}\n\n`;
+                content = content.replace(/^(\s*\\documentclass\b.*?$)/m, '$1\n\n' + postClassContent);
+
+                // Create a downloadable link for the modified file
+                const modifiedBlob = new Blob([content], { type: 'text/plain' });
+                const downloadLink = document.getElementById('downloadLink');
+                downloadLink.href = URL.createObjectURL(modifiedBlob);
+                downloadLink.download = file.name.replace('.tex', '_modified.tex');
+                downloadLink.style.display = 'inline';
+                downloadLink.textContent = 'Download Modified File';
+            };
+
+            reader.readAsText(file);
+        }
+    </script>
+</body>
+</html>
